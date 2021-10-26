@@ -1,0 +1,23 @@
+- name: Adiciona Repo
+  yum:
+    name: https://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
+    state: latest
+- name: Instala Ultima Versão do Karnel Disponivel
+  yum:
+    name: kernel-ml
+    state: latest
+    enablerepo: elrepo-kernel
+- name: Update Grub - Adiciona ultima versão do Karnel
+  command: grub2-mkconfig -o /boot/grub2/grub.cfg
+- name: Reboot para aplicação das mudanças
+  shell: 'sleep 2 && shutdown -r now "Reboot Via Ansible - **** UPDATE DE KARNEL **** " && sleep 5'
+  async: 1
+  poll: 0
+  become: true
+- name: Aguarda o Reboot do Servidor
+  local_action:
+    module: wait_for
+      host={{ inventory_hostname }}
+      port=22
+      delay=10
+  become: false

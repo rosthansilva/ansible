@@ -1,0 +1,46 @@
+- name: Verifica Updates
+  shell: yum list updates | awk 'f;/Updated Packages/{f=1;}' | awk '{ print $1 }'
+  changed_when: updates.stdout_lines | length > 0
+  args:
+    warn: false
+  register: updates
+
+- name: Pacotes Com Update Pendentes
+  debug:
+    msg: "Encontrados {{ updates.stdout_lines | length }} Pacotes para Atualizar:\n\n{{ updates.stdout }}"
+
+- when: updates.stdout_lines | length > 0
+  block:
+    - name: Update com Yum
+      yum:
+        name: "*"
+        state: latest
+
+    - name: install yum-utils
+      package:
+        name: yum-utils
+
+    - name: Forcando Reboot
+      shell: needs-restarting -r
+      failed_when: false
+      register: reboot_required
+      changed_when: false
+
+- when: updates.stdout_lines | length > 0 and reboot_required.rc != 0
+  block:
+    - name: Forcando Reboot
+      shell: sleep 3; reboot
+      ignore_errors: true
+      changed_when: false
+      async: 1
+      poll: 0
+
+    - name: Aguardando Server ficar Disponivel
+      wait_for_connection:
+        timeout: 600
+        delay: 20
+      register: reboot_result
+
+    - name: reboot time
+      debug:
+        msg: "Tempo do reboot : {{ reboot_result.elapsed }} Segundos."
